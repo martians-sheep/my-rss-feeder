@@ -4,16 +4,18 @@ use tauri::State;
 
 use crate::db::article_repo;
 use crate::db::feed_repo;
+use crate::db::settings_repo;
 use crate::db::Database;
 use crate::error::AppError;
 use crate::feed::{fetcher, parser};
-use crate::models::{Article, Feed};
+use crate::models::{Article, Feed, NotificationSettings};
+use crate::notification::scheduler::SettingsChangedSender;
 use crate::ogp::{self, OgpResult, OgpResultData};
 
 #[tauri::command]
 pub async fn add_feed(
     url: String,
-    db: State<'_, Database>,
+    db: State<'_, std::sync::Arc<Database>>,
     client: State<'_, reqwest::Client>,
 ) -> Result<Feed, AppError> {
     // Check for duplicate
@@ -85,13 +87,13 @@ pub async fn add_feed(
 }
 
 #[tauri::command]
-pub fn list_feeds(db: State<'_, Database>) -> Result<Vec<Feed>, AppError> {
+pub fn list_feeds(db: State<'_, std::sync::Arc<Database>>) -> Result<Vec<Feed>, AppError> {
     let conn = db.conn.lock().unwrap();
     feed_repo::list_feeds(&conn)
 }
 
 #[tauri::command]
-pub fn remove_feed(feed_id: String, db: State<'_, Database>) -> Result<(), AppError> {
+pub fn remove_feed(feed_id: String, db: State<'_, std::sync::Arc<Database>>) -> Result<(), AppError> {
     let conn = db.conn.lock().unwrap();
     feed_repo::delete_feed(&conn, &feed_id)
 }
@@ -99,7 +101,7 @@ pub fn remove_feed(feed_id: String, db: State<'_, Database>) -> Result<(), AppEr
 #[tauri::command]
 pub async fn refresh_feed(
     feed_id: String,
-    db: State<'_, Database>,
+    db: State<'_, std::sync::Arc<Database>>,
     client: State<'_, reqwest::Client>,
 ) -> Result<u32, AppError> {
     let feed = {
@@ -167,7 +169,7 @@ pub async fn refresh_feed(
 
 #[tauri::command]
 pub async fn refresh_all_feeds(
-    db: State<'_, Database>,
+    db: State<'_, std::sync::Arc<Database>>,
     client: State<'_, reqwest::Client>,
 ) -> Result<u32, AppError> {
     let feeds = {
@@ -242,7 +244,7 @@ pub fn list_articles(
     feed_id: Option<String>,
     limit: Option<i64>,
     offset: Option<i64>,
-    db: State<'_, Database>,
+    db: State<'_, std::sync::Arc<Database>>,
 ) -> Result<Vec<Article>, AppError> {
     let conn = db.conn.lock().unwrap();
     article_repo::list_articles(&conn, feed_id.as_deref(), limit.unwrap_or(50), offset.unwrap_or(0))
@@ -251,7 +253,7 @@ pub fn list_articles(
 #[tauri::command]
 pub fn mark_article_read(
     article_id: String,
-    db: State<'_, Database>,
+    db: State<'_, std::sync::Arc<Database>>,
 ) -> Result<(), AppError> {
     let conn = db.conn.lock().unwrap();
     article_repo::mark_as_read(&conn, &article_id)
@@ -260,7 +262,7 @@ pub fn mark_article_read(
 #[tauri::command]
 pub async fn fetch_ogp_for_article(
     article_id: String,
-    db: State<'_, Database>,
+    db: State<'_, std::sync::Arc<Database>>,
     client: State<'_, reqwest::Client>,
     app_handle: tauri::AppHandle,
 ) -> Result<OgpResult, AppError> {
@@ -293,7 +295,7 @@ pub async fn fetch_ogp_for_article(
 #[tauri::command]
 pub async fn fetch_ogp_batch(
     article_ids: Vec<String>,
-    db: State<'_, Database>,
+    db: State<'_, std::sync::Arc<Database>>,
     client: State<'_, reqwest::Client>,
     app_handle: tauri::AppHandle,
 ) -> Result<Vec<OgpResult>, AppError> {
@@ -418,4 +420,26 @@ fn get_image_cache_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, AppErro
         AppError::Other(format!("Failed to get app data dir: {}", e))
     })?;
     Ok(app_dir.join("image_cache"))
+}
+
+#[tauri::command]
+pub fn get_notification_settings(
+    db: State<'_, std::sync::Arc<Database>>,
+) -> Result<NotificationSettings, AppError> {
+    let conn = db.conn.lock().unwrap();
+    settings_repo::get_notification_settings(&conn)
+}
+
+#[tauri::command]
+pub fn save_notification_settings(
+    settings: NotificationSettings,
+    db: State<'_, std::sync::Arc<Database>>,
+    sender: State<'_, SettingsChangedSender>,
+) -> Result<(), AppError> {
+    {
+        let conn = db.conn.lock().unwrap();
+        settings_repo::save_notification_settings(&conn, &settings)?;
+    }
+    let _ = sender.send(settings);
+    Ok(())
 }
