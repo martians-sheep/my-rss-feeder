@@ -1,0 +1,44 @@
+[package]
+name = "my-rss-feeder"
+version = "0.1.0"
+description = "A personal RSS feed reader"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "my_rss_feeder_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "my-rss-feeder"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# RSS
+feed-rs = "2"
+reqwest = { version = "0.12", features = ["json"] }
+
+# HTML/OGP
+scraper = "0.22"
+
+# DB
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Utils
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+url = "2"
+
+[dev-dependencies]
+tempfile = "3"
