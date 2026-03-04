@@ -3,11 +3,14 @@ import { useFeedStore } from "./stores/feedStore";
 import { Sidebar } from "./components/Sidebar";
 import { MainContent } from "./components/MainContent";
 import { AddFeedDialog } from "./components/AddFeedDialog";
+import { useAppUpdater } from "./hooks/useAppUpdater";
 
 function App() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const loadFeeds = useFeedStore((s) => s.loadFeeds);
   const loadArticles = useFeedStore((s) => s.loadArticles);
+
+  useAppUpdater();
 
   useEffect(() => {
     loadFeeds();
