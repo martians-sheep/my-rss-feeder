@@ -59,7 +59,10 @@ impl Database {
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY NOT NULL,
                 value TEXT NOT NULL
-            );",
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at);
+            CREATE INDEX IF NOT EXISTS idx_articles_created_at ON articles(created_at);",
         )?;
         Ok(())
     }

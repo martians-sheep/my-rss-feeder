@@ -242,12 +242,21 @@ pub async fn refresh_all_feeds(
 #[tauri::command]
 pub fn list_articles(
     feed_id: Option<String>,
+    date_from: Option<String>,
+    date_to: Option<String>,
     limit: Option<i64>,
     offset: Option<i64>,
     db: State<'_, std::sync::Arc<Database>>,
 ) -> Result<Vec<Article>, AppError> {
     let conn = db.conn.lock().unwrap();
-    article_repo::list_articles(&conn, feed_id.as_deref(), limit.unwrap_or(50), offset.unwrap_or(0))
+    article_repo::list_articles(
+        &conn,
+        feed_id.as_deref(),
+        date_from.as_deref(),
+        date_to.as_deref(),
+        limit.unwrap_or(50),
+        offset.unwrap_or(0),
+    )
 }
 
 #[tauri::command]
