@@ -31,4 +31,32 @@ describe("FeedList", () => {
       feedId: "feed-1",
     });
   });
+
+  it("削除ボタンで確認ダイアログが表示される", async () => {
+    const user = userEvent.setup();
+    render(<FeedList />);
+
+    const deleteButton = screen.getByLabelText("Tech Blogを削除");
+    await user.click(deleteButton);
+
+    expect(screen.getByText("フィードを削除")).toBeInTheDocument();
+    expect(screen.getByText(/Tech Blog.*削除しますか/)).toBeInTheDocument();
+  });
+
+  it("削除確認後にフィードが削除される", async () => {
+    const user = userEvent.setup();
+    // removeFeedのinvoke + loadArticlesのinvoke
+    mockInvoke.mockResolvedValueOnce(undefined);
+    mockInvoke.mockResolvedValueOnce([]);
+
+    render(<FeedList />);
+
+    const deleteButton = screen.getByLabelText("Tech Blogを削除");
+    await user.click(deleteButton);
+    await user.click(screen.getByText("削除"));
+
+    expect(mockInvoke).toHaveBeenCalledWith("remove_feed", {
+      feedId: "feed-1",
+    });
+  });
 });
