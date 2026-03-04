@@ -5,6 +5,7 @@ pub mod feed;
 pub mod models;
 pub mod notification;
 pub mod ogp;
+pub mod webview;
 
 use std::sync::Arc;
 
@@ -48,6 +49,16 @@ pub fn run() {
 
             notification::scheduler::start(app.handle().clone(), db, settings_rx);
 
+            // Resize article webview when window is resized
+            let app_handle = app.handle().clone();
+            if let Some(window) = app.get_window("main") {
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::Resized(_) = event {
+                        let _ = webview::resize_article_webview(&app_handle);
+                    }
+                });
+            }
+
             #[cfg(debug_assertions)]
             if let Some(window) = app.get_webview_window("main") {
                 window.open_devtools();
@@ -67,6 +78,11 @@ pub fn run() {
             commands::fetch_ogp_batch,
             commands::get_notification_settings,
             commands::save_notification_settings,
+            commands::open_article_webview,
+            commands::close_article_webview,
+            commands::update_article_webview_bounds,
+            commands::hide_article_webview,
+            commands::show_article_webview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

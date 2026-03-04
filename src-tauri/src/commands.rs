@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::db::article_repo;
 use crate::db::feed_repo;
@@ -11,6 +11,7 @@ use crate::feed::{fetcher, parser};
 use crate::models::{Article, Feed, NotificationSettings};
 use crate::notification::scheduler::SettingsChangedSender;
 use crate::ogp::{self, OgpResult, OgpResultData};
+use crate::webview;
 
 #[tauri::command]
 pub async fn add_feed(
@@ -451,4 +452,32 @@ pub fn save_notification_settings(
     }
     let _ = sender.send(settings);
     Ok(())
+}
+
+#[tauri::command]
+pub async fn open_article_webview(url: String, app_handle: AppHandle) -> Result<(), AppError> {
+    webview::open_article_webview(&app_handle, &url)
+}
+
+#[tauri::command]
+pub async fn close_article_webview(app_handle: AppHandle) -> Result<(), AppError> {
+    webview::close_article_webview(&app_handle)
+}
+
+#[tauri::command]
+pub async fn update_article_webview_bounds(
+    left_offset: f64,
+    app_handle: AppHandle,
+) -> Result<(), AppError> {
+    webview::update_article_webview_bounds(&app_handle, left_offset)
+}
+
+#[tauri::command]
+pub async fn hide_article_webview(app_handle: AppHandle) -> Result<(), AppError> {
+    webview::hide_article_webview(&app_handle)
+}
+
+#[tauri::command]
+pub async fn show_article_webview(app_handle: AppHandle) -> Result<(), AppError> {
+    webview::show_article_webview(&app_handle)
 }
