@@ -1,7 +1,7 @@
 # 自動更新（オートアップデート）設計書
 
 > 最終更新: 2026-03-04
-> ステータス: 検討中
+> ステータス: 実装済み（署名鍵の設定・GitHub Secrets の登録は未完了）
 
 ---
 
@@ -485,23 +485,23 @@ git push origin main --tags
 - [ ] 秘密鍵とパスワードを安全に保管
 
 ### Step 2: 依存パッケージの追加
-- [ ] `Cargo.toml` に `tauri-plugin-updater`, `tauri-plugin-dialog`, `tauri-plugin-process` を追加
-- [ ] `pnpm add @tauri-apps/plugin-updater @tauri-apps/plugin-dialog @tauri-apps/plugin-process`
+- [x] `Cargo.toml` に `tauri-plugin-updater`, `tauri-plugin-dialog`, `tauri-plugin-process` を追加
+- [x] `pnpm add @tauri-apps/plugin-updater @tauri-apps/plugin-dialog @tauri-apps/plugin-process`
 
 ### Step 3: Tauri 設定の更新
-- [ ] `tauri.conf.json` に `plugins.updater` セクションを追加
-- [ ] `tauri.conf.json` の `bundle.createUpdaterArtifacts` を `true` に設定
-- [ ] `capabilities/default.json` に権限を追加
+- [x] `tauri.conf.json` に `plugins.updater` セクションを追加
+- [x] `tauri.conf.json` の `bundle.createUpdaterArtifacts` を `true` に設定
+- [x] `capabilities/default.json` に権限を追加
 
 ### Step 4: Rust 側の実装
-- [ ] `lib.rs` にプラグインを登録
+- [x] `lib.rs` にプラグインを登録
 
 ### Step 5: フロントエンドの実装
-- [ ] `useAppUpdater` フックを作成
-- [ ] `App.tsx` でフックを使用
+- [x] `useAppUpdater` フックを作成
+- [x] `App.tsx` でフックを使用
 
 ### Step 6: GitHub Actions の設定
-- [ ] `.github/workflows/publish.yml` を作成
+- [x] `.github/workflows/publish.yml` を作成
 - [ ] GitHub Secrets に署名鍵を登録
 - [ ] リポジトリの Actions 権限を「Read and write」に設定
 
