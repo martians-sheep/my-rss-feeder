@@ -2,6 +2,7 @@ export interface Feed {
   id: string;
   title: string;
   url: string;
+  feedType: string | null;
   siteUrl: string | null;
   description: string | null;
   iconUrl: string | null;
@@ -30,4 +31,5 @@ export interface Article {
   ogFetched: boolean;
   createdAt: string;
   feedTitle: string | null;
+  categories: string | null;
 }

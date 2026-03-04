@@ -5,12 +5,13 @@ use crate::models::Feed;
 
 pub fn insert_feed(conn: &Connection, feed: &Feed) -> Result<(), AppError> {
     conn.execute(
-        "INSERT INTO feeds (id, title, url, site_url, description, icon_url, created_at, updated_at, last_fetched_at, etag, last_modified)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        "INSERT INTO feeds (id, title, url, feed_type, site_url, description, icon_url, created_at, updated_at, last_fetched_at, etag, last_modified)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         params![
             feed.id,
             feed.title,
             feed.url,
+            feed.feed_type,
             feed.site_url,
             feed.description,
             feed.icon_url,
@@ -26,7 +27,7 @@ pub fn insert_feed(conn: &Connection, feed: &Feed) -> Result<(), AppError> {
 
 pub fn get_feed_by_id(conn: &Connection, id: &str) -> Result<Feed, AppError> {
     conn.query_row(
-        "SELECT id, title, url, site_url, description, icon_url, created_at, updated_at, last_fetched_at, etag, last_modified
+        "SELECT id, title, url, feed_type, site_url, description, icon_url, created_at, updated_at, last_fetched_at, etag, last_modified
          FROM feeds WHERE id = ?1",
         params![id],
         row_to_feed,
@@ -41,7 +42,7 @@ pub fn get_feed_by_id(conn: &Connection, id: &str) -> Result<Feed, AppError> {
 
 pub fn get_feed_by_url(conn: &Connection, url: &str) -> Result<Option<Feed>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT id, title, url, site_url, description, icon_url, created_at, updated_at, last_fetched_at, etag, last_modified
+        "SELECT id, title, url, feed_type, site_url, description, icon_url, created_at, updated_at, last_fetched_at, etag, last_modified
          FROM feeds WHERE url = ?1",
     )?;
     let mut rows = stmt.query(params![url])?;
@@ -53,7 +54,7 @@ pub fn get_feed_by_url(conn: &Connection, url: &str) -> Result<Option<Feed>, App
 
 pub fn list_feeds(conn: &Connection) -> Result<Vec<Feed>, AppError> {
     let mut stmt = conn.prepare(
-        "SELECT id, title, url, site_url, description, icon_url, created_at, updated_at, last_fetched_at, etag, last_modified
+        "SELECT id, title, url, feed_type, site_url, description, icon_url, created_at, updated_at, last_fetched_at, etag, last_modified
          FROM feeds ORDER BY title ASC",
     )?;
     let feeds = stmt
@@ -64,12 +65,13 @@ pub fn list_feeds(conn: &Connection) -> Result<Vec<Feed>, AppError> {
 
 pub fn update_feed(conn: &Connection, feed: &Feed) -> Result<(), AppError> {
     conn.execute(
-        "UPDATE feeds SET title = ?1, url = ?2, site_url = ?3, description = ?4, icon_url = ?5,
-         updated_at = ?6, last_fetched_at = ?7, etag = ?8, last_modified = ?9
-         WHERE id = ?10",
+        "UPDATE feeds SET title = ?1, url = ?2, feed_type = ?3, site_url = ?4, description = ?5, icon_url = ?6,
+         updated_at = ?7, last_fetched_at = ?8, etag = ?9, last_modified = ?10
+         WHERE id = ?11",
         params![
             feed.title,
             feed.url,
+            feed.feed_type,
             feed.site_url,
             feed.description,
             feed.icon_url,
@@ -96,14 +98,15 @@ fn row_to_feed(row: &rusqlite::Row) -> rusqlite::Result<Feed> {
         id: row.get(0)?,
         title: row.get(1)?,
         url: row.get(2)?,
-        site_url: row.get(3)?,
-        description: row.get(4)?,
-        icon_url: row.get(5)?,
-        created_at: row.get(6)?,
-        updated_at: row.get(7)?,
-        last_fetched_at: row.get(8)?,
-        etag: row.get(9)?,
-        last_modified: row.get(10)?,
+        feed_type: row.get(3)?,
+        site_url: row.get(4)?,
+        description: row.get(5)?,
+        icon_url: row.get(6)?,
+        created_at: row.get(7)?,
+        updated_at: row.get(8)?,
+        last_fetched_at: row.get(9)?,
+        etag: row.get(10)?,
+        last_modified: row.get(11)?,
     })
 }
 
@@ -122,6 +125,7 @@ mod tests {
             id: uuid::Uuid::new_v4().to_string(),
             title: "Test Feed".to_string(),
             url: "https://example.com/feed.xml".to_string(),
+            feed_type: Some("rss2".to_string()),
             site_url: Some("https://example.com".to_string()),
             description: Some("A test feed".to_string()),
             icon_url: None,
