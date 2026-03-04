@@ -57,6 +57,18 @@ export function ArticleCard({ article }: ArticleCardProps) {
                   {description}
                 </p>
               )}
+              {article.categories && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {article.categories.split(",").map((cat) => (
+                    <span
+                      key={cat}
+                      className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500"
+                    >
+                      {cat}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
                 {article.feedTitle && <span>{article.feedTitle}</span>}
                 {article.publishedAt && (

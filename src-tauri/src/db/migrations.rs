@@ -25,6 +25,7 @@ impl Database {
                 id TEXT PRIMARY KEY NOT NULL,
                 title TEXT NOT NULL,
                 url TEXT NOT NULL UNIQUE,
+                feed_type TEXT,
                 site_url TEXT,
                 description TEXT,
                 icon_url TEXT,
@@ -52,10 +53,18 @@ impl Database {
                 og_description TEXT,
                 og_fetched INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
+                categories TEXT,
                 FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
                 UNIQUE(feed_id, entry_id)
             );",
         )?;
+
+        // 既存DBへのマイグレーション: feed_type カラムを追加
+        let _ = conn.execute_batch(
+            "ALTER TABLE feeds ADD COLUMN feed_type TEXT;
+             ALTER TABLE articles ADD COLUMN categories TEXT;",
+        );
+
         Ok(())
     }
 }

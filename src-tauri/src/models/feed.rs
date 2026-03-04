@@ -6,6 +6,7 @@ pub struct Feed {
     pub id: String,
     pub title: String,
     pub url: String,
+    pub feed_type: Option<String>,
     pub site_url: Option<String>,
     pub description: Option<String>,
     pub icon_url: Option<String>,
@@ -25,6 +26,7 @@ mod tests {
             id: "test-id".to_string(),
             title: "Test Feed".to_string(),
             url: "https://example.com/feed.xml".to_string(),
+            feed_type: Some("rss2".to_string()),
             site_url: Some("https://example.com".to_string()),
             description: Some("A test feed".to_string()),
             icon_url: None,
@@ -41,12 +43,14 @@ mod tests {
         let feed = sample_feed();
         let json = serde_json::to_value(&feed).unwrap();
         assert!(json.get("siteUrl").is_some());
+        assert!(json.get("feedType").is_some());
         assert!(json.get("createdAt").is_some());
         assert!(json.get("updatedAt").is_some());
         assert!(json.get("lastFetchedAt").is_some());
         assert!(json.get("iconUrl").is_some());
         assert!(json.get("site_url").is_none());
         assert!(json.get("created_at").is_none());
+        assert!(json.get("feed_type").is_none());
     }
 
     #[test]
@@ -55,6 +59,7 @@ mod tests {
             "id": "test-id",
             "title": "Test Feed",
             "url": "https://example.com/feed.xml",
+            "feedType": "atom",
             "siteUrl": "https://example.com",
             "description": null,
             "iconUrl": null,
@@ -67,6 +72,7 @@ mod tests {
         let feed: Feed = serde_json::from_str(json).unwrap();
         assert_eq!(feed.id, "test-id");
         assert_eq!(feed.title, "Test Feed");
+        assert_eq!(feed.feed_type, Some("atom".to_string()));
         assert!(feed.site_url.is_some());
     }
 
