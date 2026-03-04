@@ -12,6 +12,8 @@ export interface Feed {
   lastModified: string | null;
 }
 
+export type ArticleSortOrder = "publishedDate" | "receivedDate";
+
 export type DatePreset = "today" | "week" | "month" | "all" | "custom";
 
 export interface DateFilter {

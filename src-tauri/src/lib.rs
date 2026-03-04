@@ -83,6 +83,8 @@ pub fn run() {
             commands::update_article_webview_bounds,
             commands::hide_article_webview,
             commands::show_article_webview,
+            commands::highlight_in_webview,
+            commands::remove_highlight_in_webview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

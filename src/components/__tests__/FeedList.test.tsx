@@ -31,6 +31,7 @@ describe("FeedList", () => {
       feedId: "feed-1",
       dateFrom: null,
       dateTo: null,
+      sortOrder: "publishedDate",
     });
   });
 });

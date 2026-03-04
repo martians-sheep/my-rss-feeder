@@ -1,5 +1,6 @@
 import { useFeedStore } from "../stores/feedStore";
 import { DateFilter } from "./DateFilter";
+import { SortToggle } from "./SortToggle";
 
 export function Toolbar() {
   const refreshAllFeeds = useFeedStore((s) => s.refreshAllFeeds);
@@ -22,8 +23,9 @@ export function Toolbar() {
           {loading ? "更新中..." : "更新"}
         </button>
       </div>
-      <div className="mt-2">
+      <div className="mt-2 flex items-center gap-4">
         <DateFilter />
+        <SortToggle />
       </div>
     </div>
   );

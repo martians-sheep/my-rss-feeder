@@ -11,6 +11,8 @@ export function MainContent() {
   const selectedArticle = useArticleViewStore((s) => s.selectedArticle);
   const articleListWidth = useArticleViewStore((s) => s.articleListWidth);
   const closeWebview = useArticleViewStore((s) => s.closeWebview);
+  const highlightEnabled = useArticleViewStore((s) => s.highlightEnabled);
+  const toggleHighlight = useArticleViewStore((s) => s.toggleHighlight);
   useOgpFetch();
 
   const isWebviewOpen = selectedArticle !== null;
@@ -36,6 +38,33 @@ export function MainContent() {
           <p className="min-w-0 flex-1 truncate text-xs text-gray-600">
             {selectedArticle.title}
           </p>
+          <button
+            onClick={toggleHighlight}
+            className={`shrink-0 rounded p-1 ${
+              highlightEnabled
+                ? "bg-yellow-100 text-yellow-600"
+                : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            }`}
+            title={
+              highlightEnabled
+                ? "ハイライトを解除"
+                : "タイトルをハイライト"
+            }
+          >
+            <svg
+              className="h-3.5 w-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </button>
           <button
             onClick={handleOpenExternal}
             className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"

@@ -74,6 +74,7 @@ describe("feedStore", () => {
       feedId: null,
       dateFrom: null,
       dateTo: null,
+      sortOrder: "publishedDate",
     });
     expect(useFeedStore.getState().articles).toEqual(mockArticles);
   });
@@ -89,6 +90,7 @@ describe("feedStore", () => {
       feedId: "feed-1",
       dateFrom: null,
       dateTo: null,
+      sortOrder: "publishedDate",
     });
     expect(useFeedStore.getState().articles).toEqual(feed1Articles);
   });

@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
-import type { Feed, Article, DateFilter, DatePreset } from "../types/feed";
+import type {
+  Feed,
+  Article,
+  DateFilter,
+  DatePreset,
+  ArticleSortOrder,
+} from "../types/feed";
 
 interface OgpData {
   ogImageUrl: string | null;
@@ -49,6 +55,7 @@ interface FeedState {
   articles: Article[];
   selectedFeedId: string | null;
   dateFilter: DateFilter;
+  sortOrder: ArticleSortOrder;
   loading: boolean;
   error: string | null;
   loadFeeds: () => Promise<void>;
@@ -57,6 +64,7 @@ interface FeedState {
   selectFeed: (feedId: string | null) => void;
   setDatePreset: (preset: DatePreset) => void;
   setDateFilter: (filter: DateFilter) => void;
+  setSortOrder: (sortOrder: ArticleSortOrder) => void;
   loadArticles: () => Promise<void>;
   markArticleRead: (articleId: string) => Promise<void>;
   refreshFeed: (feedId: string) => Promise<void>;
@@ -69,6 +77,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   articles: [],
   selectedFeedId: null,
   dateFilter: { preset: "all", customDate: null },
+  sortOrder: "publishedDate",
   loading: false,
   error: null,
 
@@ -122,15 +131,21 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     get().loadArticles();
   },
 
+  setSortOrder: (sortOrder: ArticleSortOrder) => {
+    set({ sortOrder });
+    get().loadArticles();
+  },
+
   loadArticles: async () => {
     set({ loading: true, error: null });
     try {
-      const { selectedFeedId, dateFilter } = get();
+      const { selectedFeedId, dateFilter, sortOrder } = get();
       const { dateFrom, dateTo } = computeDateRange(dateFilter);
       const articles = await invoke<Article[]>("list_articles", {
         feedId: selectedFeedId,
         dateFrom,
         dateTo,
+        sortOrder,
       });
       set({ articles, loading: false });
     } catch (e) {

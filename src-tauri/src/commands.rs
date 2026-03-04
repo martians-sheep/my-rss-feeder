@@ -8,7 +8,7 @@ use crate::db::settings_repo;
 use crate::db::Database;
 use crate::error::AppError;
 use crate::feed::{fetcher, parser};
-use crate::models::{Article, Feed, NotificationSettings};
+use crate::models::{Article, ArticleSortOrder, Feed, NotificationSettings};
 use crate::notification::scheduler::SettingsChangedSender;
 use crate::ogp::{self, OgpResult, OgpResultData};
 use crate::webview;
@@ -245,6 +245,7 @@ pub fn list_articles(
     feed_id: Option<String>,
     date_from: Option<String>,
     date_to: Option<String>,
+    sort_order: Option<ArticleSortOrder>,
     limit: Option<i64>,
     offset: Option<i64>,
     db: State<'_, std::sync::Arc<Database>>,
@@ -255,6 +256,7 @@ pub fn list_articles(
         feed_id.as_deref(),
         date_from.as_deref(),
         date_to.as_deref(),
+        sort_order.unwrap_or_default(),
         limit.unwrap_or(50),
         offset.unwrap_or(0),
     )
@@ -455,8 +457,25 @@ pub fn save_notification_settings(
 }
 
 #[tauri::command]
-pub async fn open_article_webview(url: String, app_handle: AppHandle) -> Result<(), AppError> {
-    webview::open_article_webview(&app_handle, &url)
+pub async fn open_article_webview(
+    url: String,
+    title: Option<String>,
+    app_handle: AppHandle,
+) -> Result<(), AppError> {
+    webview::open_article_webview(&app_handle, &url, title.as_deref())
+}
+
+#[tauri::command]
+pub async fn highlight_in_webview(
+    title: String,
+    app_handle: AppHandle,
+) -> Result<(), AppError> {
+    webview::highlight_in_webview(&app_handle, &title)
+}
+
+#[tauri::command]
+pub async fn remove_highlight_in_webview(app_handle: AppHandle) -> Result<(), AppError> {
+    webview::remove_highlight_in_webview(&app_handle)
 }
 
 #[tauri::command]
