@@ -34,6 +34,7 @@ pub struct Article {
     pub created_at: String,
     pub feed_title: Option<String>,
     pub categories: Option<String>,
+    pub feed_order: i32,
 }
 
 #[cfg(test)]
@@ -60,6 +61,7 @@ mod tests {
             created_at: "2024-01-01T00:00:00+00:00".to_string(),
             feed_title: None,
             categories: None,
+            feed_order: 0,
         }
     }
 

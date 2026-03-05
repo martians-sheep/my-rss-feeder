@@ -73,6 +73,11 @@ impl Database {
              ALTER TABLE articles ADD COLUMN categories TEXT;",
         );
 
+        // 既存DBへのマイグレーション: feed_order カラムを追加
+        let _ = conn.execute_batch(
+            "ALTER TABLE articles ADD COLUMN feed_order INTEGER NOT NULL DEFAULT 0;",
+        );
+
         Ok(())
     }
 }

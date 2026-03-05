@@ -41,4 +41,5 @@ export interface Article {
   createdAt: string;
   feedTitle: string | null;
   categories: string | null;
+  feedOrder: number;
 }
