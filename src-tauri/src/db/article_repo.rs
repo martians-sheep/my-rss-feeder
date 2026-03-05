@@ -45,6 +45,7 @@ pub fn list_articles(
     feed_id: Option<&str>,
     date_from: Option<&str>,
     date_to: Option<&str>,
+    query: Option<&str>,
     sort_order: ArticleSortOrder,
     limit: i64,
     offset: i64,
@@ -73,6 +74,25 @@ pub fn list_articles(
             param_idx
         ));
         params_vec.push(Box::new(dt.to_string()));
+    }
+    if let Some(q) = query {
+        let q = q.trim();
+        if !q.is_empty() {
+            let pattern = format!("%{}%", q);
+            param_idx += 1;
+            let p1 = param_idx;
+            param_idx += 1;
+            let p2 = param_idx;
+            param_idx += 1;
+            let p3 = param_idx;
+            conditions.push(format!(
+                "(a.title LIKE ?{} OR a.summary LIKE ?{} OR a.content LIKE ?{})",
+                p1, p2, p3
+            ));
+            params_vec.push(Box::new(pattern.clone()));
+            params_vec.push(Box::new(pattern.clone()));
+            params_vec.push(Box::new(pattern));
+        }
     }
 
     let where_clause = if conditions.is_empty() {
@@ -299,7 +319,7 @@ mod tests {
         updated.title = "Updated Title".to_string();
         upsert_article(&conn, &updated).unwrap();
 
-        let articles = list_articles(&conn, Some(&feed.id), None, None, ArticleSortOrder::default(), 100, 0).unwrap();
+        let articles = list_articles(&conn, Some(&feed.id), None, None, None, ArticleSortOrder::default(), 100, 0).unwrap();
         assert_eq!(articles.len(), 1);
         assert_eq!(articles[0].title, "Updated Title");
     }
@@ -322,11 +342,11 @@ mod tests {
         upsert_article(&conn, &a1).unwrap();
         upsert_article(&conn, &a2).unwrap();
 
-        let articles = list_articles(&conn, Some("feed-1"), None, None, ArticleSortOrder::default(), 100, 0).unwrap();
+        let articles = list_articles(&conn, Some("feed-1"), None, None, None, ArticleSortOrder::default(), 100, 0).unwrap();
         assert_eq!(articles.len(), 1);
         assert_eq!(articles[0].feed_id, "feed-1");
 
-        let all = list_articles(&conn, None, None, None, ArticleSortOrder::default(), 100, 0).unwrap();
+        let all = list_articles(&conn, None, None, None, None, ArticleSortOrder::default(), 100, 0).unwrap();
         assert_eq!(all.len(), 2);
     }
 
@@ -367,7 +387,7 @@ mod tests {
 
         feed_repo::delete_feed(&conn, &feed.id).unwrap();
 
-        let articles = list_articles(&conn, Some(&feed.id), None, None, ArticleSortOrder::default(), 100, 0).unwrap();
+        let articles = list_articles(&conn, Some(&feed.id), None, None, None, ArticleSortOrder::default(), 100, 0).unwrap();
         assert_eq!(articles.len(), 0);
     }
 
@@ -470,13 +490,13 @@ mod tests {
             upsert_article(&conn, &a).unwrap();
         }
 
-        let page1 = list_articles(&conn, None, None, None, ArticleSortOrder::default(), 2, 0).unwrap();
+        let page1 = list_articles(&conn, None, None, None, None, ArticleSortOrder::default(), 2, 0).unwrap();
         assert_eq!(page1.len(), 2);
 
-        let page2 = list_articles(&conn, None, None, None, ArticleSortOrder::default(), 2, 2).unwrap();
+        let page2 = list_articles(&conn, None, None, None, None, ArticleSortOrder::default(), 2, 2).unwrap();
         assert_eq!(page2.len(), 2);
 
-        let page3 = list_articles(&conn, None, None, None, ArticleSortOrder::default(), 2, 4).unwrap();
+        let page3 = list_articles(&conn, None, None, None, None, ArticleSortOrder::default(), 2, 4).unwrap();
         assert_eq!(page3.len(), 1);
     }
 
@@ -498,6 +518,7 @@ mod tests {
             &conn,
             None,
             Some("2024-03-01T00:00:00+00:00"),
+            None,
             None,
             ArticleSortOrder::default(),
             100,
@@ -527,6 +548,7 @@ mod tests {
             None,
             None,
             Some("2024-03-01T00:00:00+00:00"),
+            None,
             ArticleSortOrder::default(),
             100,
             0,
@@ -558,6 +580,7 @@ mod tests {
             None,
             Some("2024-02-01T00:00:00+00:00"),
             Some("2024-05-01T00:00:00+00:00"),
+            None,
             ArticleSortOrder::default(),
             100,
             0,
@@ -585,6 +608,7 @@ mod tests {
             None,
             Some("2024-03-01T00:00:00+00:00"),
             Some("2024-05-01T00:00:00+00:00"),
+            None,
             ArticleSortOrder::default(),
             100,
             0,
@@ -598,6 +622,7 @@ mod tests {
             &conn,
             None,
             Some("2024-05-01T00:00:00+00:00"),
+            None,
             None,
             ArticleSortOrder::default(),
             100,
@@ -636,6 +661,7 @@ mod tests {
             Some("feed-1"),
             Some("2024-03-01T00:00:00+00:00"),
             None,
+            None,
             ArticleSortOrder::default(),
             100,
             0,
@@ -663,6 +689,7 @@ mod tests {
 
         let articles = list_articles(
             &conn,
+            None,
             None,
             None,
             None,
@@ -698,6 +725,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             ArticleSortOrder::ReceivedDate,
             100,
             0,
@@ -707,5 +735,40 @@ mod tests {
         // created_at ASC: first-received (2024-01) first
         assert_eq!(articles[0].entry_id, "first-received");
         assert_eq!(articles[1].entry_id, "second-received");
+    }
+
+    #[test]
+    fn list_articles_filters_by_query() {
+        let db = setup();
+        let conn = db.conn.lock().unwrap();
+        let feed = sample_feed();
+        feed_repo::insert_feed(&conn, &feed).unwrap();
+
+        let mut a1 = sample_article(&feed.id, "rust-article");
+        a1.title = "Rustの最新情報".to_string();
+        a1.summary = Some("Rust言語のアップデート".to_string());
+        let mut a2 = sample_article(&feed.id, "python-article");
+        a2.title = "Pythonチュートリアル".to_string();
+        a2.summary = Some("Python入門ガイド".to_string());
+        upsert_article(&conn, &a1).unwrap();
+        upsert_article(&conn, &a2).unwrap();
+
+        // タイトルで検索
+        let articles = list_articles(&conn, None, None, None, Some("Rust"), ArticleSortOrder::default(), 100, 0).unwrap();
+        assert_eq!(articles.len(), 1);
+        assert_eq!(articles[0].entry_id, "rust-article");
+
+        // 要約で検索
+        let articles = list_articles(&conn, None, None, None, Some("入門"), ArticleSortOrder::default(), 100, 0).unwrap();
+        assert_eq!(articles.len(), 1);
+        assert_eq!(articles[0].entry_id, "python-article");
+
+        // 該当なし
+        let articles = list_articles(&conn, None, None, None, Some("Java"), ArticleSortOrder::default(), 100, 0).unwrap();
+        assert_eq!(articles.len(), 0);
+
+        // 空文字列は全件返す
+        let articles = list_articles(&conn, None, None, None, Some(""), ArticleSortOrder::default(), 100, 0).unwrap();
+        assert_eq!(articles.len(), 2);
     }
 }

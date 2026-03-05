@@ -56,6 +56,7 @@ interface FeedState {
   selectedFeedId: string | null;
   dateFilter: DateFilter;
   sortOrder: ArticleSortOrder;
+  searchQuery: string;
   loading: boolean;
   error: string | null;
   loadFeeds: () => Promise<void>;
@@ -65,6 +66,7 @@ interface FeedState {
   setDatePreset: (preset: DatePreset) => void;
   setDateFilter: (filter: DateFilter) => void;
   setSortOrder: (sortOrder: ArticleSortOrder) => void;
+  setSearchQuery: (query: string) => void;
   loadArticles: () => Promise<void>;
   markArticleRead: (articleId: string) => Promise<void>;
   refreshFeed: (feedId: string) => Promise<void>;
@@ -78,6 +80,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   selectedFeedId: null,
   dateFilter: { preset: "all", customDate: null },
   sortOrder: "publishedDate",
+  searchQuery: "",
   loading: false,
   error: null,
 
@@ -136,15 +139,21 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     get().loadArticles();
   },
 
+  setSearchQuery: (query: string) => {
+    set({ searchQuery: query });
+    get().loadArticles();
+  },
+
   loadArticles: async () => {
     set({ loading: true, error: null });
     try {
-      const { selectedFeedId, dateFilter, sortOrder } = get();
+      const { selectedFeedId, dateFilter, sortOrder, searchQuery } = get();
       const { dateFrom, dateTo } = computeDateRange(dateFilter);
       const articles = await invoke<Article[]>("list_articles", {
         feedId: selectedFeedId,
         dateFrom,
         dateTo,
+        query: searchQuery || null,
         sortOrder,
       });
       set({ articles, loading: false });
