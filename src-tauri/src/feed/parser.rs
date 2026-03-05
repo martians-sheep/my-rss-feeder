@@ -20,6 +20,7 @@ pub struct ParsedEntry {
     pub author: Option<String>,
     pub published_at: Option<String>,
     pub categories: Vec<String>,
+    pub position: usize,
 }
 
 /// feed-rs の FeedType を文字列に変換する
@@ -56,7 +57,8 @@ pub fn parse_feed(data: &[u8], feed_url: &str) -> Result<ParsedFeed, AppError> {
     let entries = feed
         .entries
         .into_iter()
-        .map(|entry| {
+        .enumerate()
+        .map(|(position, entry)| {
             let entry_id = if entry.id.is_empty() {
                 let fallback = entry
                     .links
@@ -104,6 +106,7 @@ pub fn parse_feed(data: &[u8], feed_url: &str) -> Result<ParsedFeed, AppError> {
                 author,
                 published_at,
                 categories,
+                position,
             }
         })
         .collect();

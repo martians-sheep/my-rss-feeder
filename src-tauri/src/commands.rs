@@ -89,6 +89,7 @@ pub async fn add_feed(
                 created_at: now.clone(),
                 feed_title: None,
                 categories,
+                feed_order: entry.position as i32,
             };
             article_repo::upsert_article(&conn, &article)?;
         }
@@ -177,6 +178,7 @@ pub async fn refresh_feed(
                 created_at: now.clone(),
                 feed_title: None,
                 categories,
+                feed_order: entry.position as i32,
             };
             article_repo::upsert_article(&conn, &article)?;
         }
@@ -255,6 +257,7 @@ pub async fn refresh_all_feeds(
                     created_at: now.clone(),
                     feed_title: None,
                     categories,
+                    feed_order: entry.position as i32,
                 };
                 article_repo::upsert_article(&conn, &article)?;
             }

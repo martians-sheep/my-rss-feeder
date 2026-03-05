@@ -5,8 +5,8 @@ use crate::models::{Article, ArticleSortOrder};
 
 pub fn upsert_article(conn: &Connection, article: &Article) -> Result<(), AppError> {
     conn.execute(
-        "INSERT INTO articles (id, feed_id, entry_id, title, url, summary, content, author, published_at, is_read, read_at, og_image_url, og_image_local, og_description, og_fetched, created_at, categories)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)
+        "INSERT INTO articles (id, feed_id, entry_id, title, url, summary, content, author, published_at, is_read, read_at, og_image_url, og_image_local, og_description, og_fetched, created_at, categories, feed_order)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
          ON CONFLICT(feed_id, entry_id) DO UPDATE SET
            title = excluded.title,
            url = excluded.url,
@@ -14,7 +14,8 @@ pub fn upsert_article(conn: &Connection, article: &Article) -> Result<(), AppErr
            content = excluded.content,
            author = excluded.author,
            published_at = excluded.published_at,
-           categories = excluded.categories",
+           categories = excluded.categories,
+           feed_order = excluded.feed_order",
         params![
             article.id,
             article.feed_id,
@@ -33,6 +34,7 @@ pub fn upsert_article(conn: &Connection, article: &Article) -> Result<(), AppErr
             article.og_fetched as i32,
             article.created_at,
             article.categories,
+            article.feed_order,
         ],
     )?;
     Ok(())
@@ -88,13 +90,13 @@ pub fn list_articles(
 
     let order_clause = match sort_order {
         ArticleSortOrder::PublishedDate => "ORDER BY a.published_at DESC, a.created_at DESC",
-        ArticleSortOrder::ReceivedDate => "ORDER BY a.created_at ASC",
+        ArticleSortOrder::ReceivedDate => "ORDER BY a.created_at ASC, a.feed_order ASC",
     };
 
     let sql = format!(
         "SELECT a.id, a.feed_id, a.entry_id, a.title, a.url, a.summary, a.content, a.author,
                 a.published_at, a.is_read, a.read_at, a.og_image_url, a.og_image_local,
-                a.og_description, a.og_fetched, a.created_at, f.title as feed_title, a.categories
+                a.og_description, a.og_fetched, a.created_at, f.title as feed_title, a.categories, a.feed_order
          FROM articles a LEFT JOIN feeds f ON a.feed_id = f.id
          {}
          {}
@@ -115,7 +117,7 @@ pub fn get_article_by_id(conn: &Connection, id: &str) -> Result<Article, AppErro
     conn.query_row(
         "SELECT a.id, a.feed_id, a.entry_id, a.title, a.url, a.summary, a.content, a.author,
                 a.published_at, a.is_read, a.read_at, a.og_image_url, a.og_image_local,
-                a.og_description, a.og_fetched, a.created_at, f.title as feed_title, a.categories
+                a.og_description, a.og_fetched, a.created_at, f.title as feed_title, a.categories, a.feed_order
          FROM articles a LEFT JOIN feeds f ON a.feed_id = f.id
          WHERE a.id = ?1",
         params![id],
@@ -173,7 +175,7 @@ pub fn list_unfetched_ogp_articles(
     let sql = format!(
         "SELECT a.id, a.feed_id, a.entry_id, a.title, a.url, a.summary, a.content, a.author,
                 a.published_at, a.is_read, a.read_at, a.og_image_url, a.og_image_local,
-                a.og_description, a.og_fetched, a.created_at, f.title as feed_title, a.categories
+                a.og_description, a.og_fetched, a.created_at, f.title as feed_title, a.categories, a.feed_order
          FROM articles a LEFT JOIN feeds f ON a.feed_id = f.id
          WHERE a.id IN ({}) AND a.og_fetched = 0",
         placeholders.join(", ")
@@ -210,6 +212,7 @@ fn row_to_article(row: &rusqlite::Row) -> rusqlite::Result<Article> {
         created_at: row.get(15)?,
         feed_title: row.get(16)?,
         categories: row.get(17)?,
+        feed_order: row.get(18)?,
     })
 }
 
@@ -262,6 +265,7 @@ mod tests {
             created_at: "2024-01-01T00:00:00+00:00".to_string(),
             feed_title: None,
             categories: None,
+            feed_order: 0,
         }
     }
 
