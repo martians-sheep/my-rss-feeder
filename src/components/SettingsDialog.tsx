@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { useSettingsStore } from "../stores/settingsStore";
 
 interface SettingsDialogProps {
@@ -14,11 +15,13 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
   const [enabled, setEnabled] = useState(notification.enabled);
   const [time, setTime] = useState(notification.time);
+  const [version, setVersion] = useState("");
 
   useEffect(() => {
     if (open) {
       setEnabled(notification.enabled);
       setTime(notification.time);
+      getVersion().then(setVersion);
     }
   }, [open, notification]);
 
@@ -77,6 +80,10 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             />
           </div>
         </div>
+
+        {version && (
+          <p className="mt-6 text-xs text-gray-400">バージョン {version}</p>
+        )}
 
         <div className="mt-6 flex justify-end gap-2">
           <button
