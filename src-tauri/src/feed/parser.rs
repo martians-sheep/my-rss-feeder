@@ -4,6 +4,7 @@ use crate::error::AppError;
 
 pub struct ParsedFeed {
     pub title: String,
+    pub feed_type: String,
     pub site_url: Option<String>,
     pub description: Option<String>,
     pub icon_url: Option<String>,
@@ -18,11 +19,25 @@ pub struct ParsedEntry {
     pub content: Option<String>,
     pub author: Option<String>,
     pub published_at: Option<String>,
+    pub categories: Vec<String>,
+}
+
+/// feed-rs の FeedType を文字列に変換する
+fn feed_type_to_string(ft: &feed_rs::model::FeedType) -> String {
+    match ft {
+        feed_rs::model::FeedType::Atom => "atom".to_string(),
+        feed_rs::model::FeedType::JSON => "json".to_string(),
+        feed_rs::model::FeedType::RSS0 => "rss0".to_string(),
+        feed_rs::model::FeedType::RSS1 => "rss1".to_string(),
+        feed_rs::model::FeedType::RSS2 => "rss2".to_string(),
+    }
 }
 
 pub fn parse_feed(data: &[u8], feed_url: &str) -> Result<ParsedFeed, AppError> {
     let feed =
         feed_rs::parser::parse(data).map_err(|e| AppError::FeedParse(format!("{}", e)))?;
+
+    let feed_type = feed_type_to_string(&feed.feed_type);
 
     let title = feed
         .title
@@ -74,6 +89,12 @@ pub fn parse_feed(data: &[u8], feed_url: &str) -> Result<ParsedFeed, AppError> {
                 .or(entry.updated)
                 .map(|dt| dt.to_rfc3339());
 
+            let categories = entry
+                .categories
+                .iter()
+                .map(|c| c.label.as_ref().unwrap_or(&c.term).clone())
+                .collect();
+
             ParsedEntry {
                 entry_id,
                 title,
@@ -82,12 +103,14 @@ pub fn parse_feed(data: &[u8], feed_url: &str) -> Result<ParsedFeed, AppError> {
                 content,
                 author,
                 published_at,
+                categories,
             }
         })
         .collect();
 
     Ok(ParsedFeed {
         title,
+        feed_type,
         site_url,
         description,
         icon_url,
@@ -206,5 +229,104 @@ mod tests {
         let result =
             parse_feed(SAMPLE_ATOM.as_bytes(), "https://example.com/atom.xml").unwrap();
         assert!(result.site_url.is_some());
+    }
+
+    #[test]
+    fn parse_rss2_returns_rss2_feed_type() {
+        let result =
+            parse_feed(SAMPLE_RSS2.as_bytes(), "https://example.com/feed.xml").unwrap();
+        assert_eq!(result.feed_type, "rss2");
+    }
+
+    #[test]
+    fn parse_atom_returns_atom_feed_type() {
+        let result =
+            parse_feed(SAMPLE_ATOM.as_bytes(), "https://example.com/atom.xml").unwrap();
+        assert_eq!(result.feed_type, "atom");
+    }
+
+    #[test]
+    fn parse_atom_with_categories() {
+        let atom_with_categories = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Category Feed</title>
+  <link href="https://example.com"/>
+  <id>urn:uuid:cat-feed</id>
+  <entry>
+    <title>Tagged Entry</title>
+    <link href="https://example.com/tagged"/>
+    <id>urn:uuid:tagged-1</id>
+    <updated>2024-01-01T00:00:00Z</updated>
+    <category term="tech" label="Technology"/>
+    <category term="rust"/>
+  </entry>
+</feed>"#;
+        let result = parse_feed(
+            atom_with_categories.as_bytes(),
+            "https://example.com/atom.xml",
+        )
+        .unwrap();
+        assert_eq!(result.entries[0].categories.len(), 2);
+        // label がある場合はlabelを、なければtermを使用
+        assert_eq!(result.entries[0].categories[0], "Technology");
+        assert_eq!(result.entries[0].categories[1], "rust");
+    }
+
+    #[test]
+    fn parse_atom_with_content() {
+        let atom_with_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Content Feed</title>
+  <link href="https://example.com"/>
+  <id>urn:uuid:content-feed</id>
+  <entry>
+    <title>Rich Entry</title>
+    <link href="https://example.com/rich"/>
+    <id>urn:uuid:rich-1</id>
+    <updated>2024-01-01T00:00:00Z</updated>
+    <content type="html">&lt;p&gt;Hello World&lt;/p&gt;</content>
+    <summary>Plain summary</summary>
+  </entry>
+</feed>"#;
+        let result = parse_feed(
+            atom_with_content.as_bytes(),
+            "https://example.com/atom.xml",
+        )
+        .unwrap();
+        assert!(result.entries[0].content.is_some());
+        assert!(result.entries[0].summary.is_some());
+    }
+
+    #[test]
+    fn parse_rss2_with_categories() {
+        let rss_with_categories = r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>RSS Category Feed</title>
+    <link>https://example.com</link>
+    <item>
+      <title>Categorized</title>
+      <link>https://example.com/cat</link>
+      <guid>cat-1</guid>
+      <category>Programming</category>
+      <category>Rust</category>
+    </item>
+  </channel>
+</rss>"#;
+        let result = parse_feed(
+            rss_with_categories.as_bytes(),
+            "https://example.com/feed.xml",
+        )
+        .unwrap();
+        assert_eq!(result.entries[0].categories.len(), 2);
+        assert_eq!(result.entries[0].categories[0], "Programming");
+        assert_eq!(result.entries[0].categories[1], "Rust");
+    }
+
+    #[test]
+    fn entries_have_empty_categories_when_none() {
+        let result =
+            parse_feed(SAMPLE_RSS2.as_bytes(), "https://example.com/feed.xml").unwrap();
+        assert!(result.entries[0].categories.is_empty());
     }
 }

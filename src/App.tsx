@@ -8,6 +8,7 @@ import { ResizeHandle } from "./components/ResizeHandle";
 import { ArticleWebView } from "./components/ArticleWebView";
 import { AddFeedDialog } from "./components/AddFeedDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { useAppUpdater } from "./hooks/useAppUpdater";
 
 function App() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -16,6 +17,8 @@ function App() {
   const loadArticles = useFeedStore((s) => s.loadArticles);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const selectedArticle = useArticleViewStore((s) => s.selectedArticle);
+
+  useAppUpdater();
 
   useEffect(() => {
     loadFeeds();

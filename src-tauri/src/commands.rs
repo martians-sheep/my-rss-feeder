@@ -7,7 +7,7 @@ use crate::db::feed_repo;
 use crate::db::settings_repo;
 use crate::db::Database;
 use crate::error::AppError;
-use crate::feed::{fetcher, parser};
+use crate::feed::{discovery, fetcher, parser};
 use crate::models::{Article, ArticleSortOrder, Feed, NotificationSettings};
 use crate::notification::scheduler::SettingsChangedSender;
 use crate::ogp::{self, OgpResult, OgpResultData};
@@ -19,10 +19,13 @@ pub async fn add_feed(
     db: State<'_, std::sync::Arc<Database>>,
     client: State<'_, reqwest::Client>,
 ) -> Result<Feed, AppError> {
-    // Check for duplicate
+    // HTMLページの場合はフィードURLを自動検出する
+    let feed_url = discovery::discover_or_use_feed_url(&client, &url).await?;
+
+    // 重複チェック
     {
         let conn = db.conn.lock().unwrap();
-        if let Some(existing) = feed_repo::get_feed_by_url(&conn, &url)? {
+        if let Some(existing) = feed_repo::get_feed_by_url(&conn, &feed_url)? {
             return Err(AppError::Duplicate(format!(
                 "Feed already exists: {}",
                 existing.url
@@ -30,13 +33,13 @@ pub async fn add_feed(
         }
     }
 
-    // Fetch the feed
-    let fetch_result = fetcher::fetch_feed(&client, &url, None, None)
+    // フィードを取得
+    let fetch_result = fetcher::fetch_feed(&client, &feed_url, None, None)
         .await?
         .ok_or_else(|| AppError::Other("No content returned from feed".to_string()))?;
 
-    // Parse the feed
-    let parsed = parser::parse_feed(&fetch_result.body, &url)?;
+    // フィードをパース
+    let parsed = parser::parse_feed(&fetch_result.body, &feed_url)?;
 
     let now = chrono::Utc::now().to_rfc3339();
     let feed_id = uuid::Uuid::new_v4().to_string();
@@ -44,7 +47,8 @@ pub async fn add_feed(
     let feed = Feed {
         id: feed_id.clone(),
         title: parsed.title,
-        url: url.clone(),
+        url: feed_url.clone(),
+        feed_type: Some(parsed.feed_type),
         site_url: parsed.site_url,
         description: parsed.description,
         icon_url: parsed.icon_url,
@@ -55,12 +59,17 @@ pub async fn add_feed(
         last_modified: fetch_result.last_modified,
     };
 
-    // Insert feed and articles
+    // フィードと記事を保存
     {
         let conn = db.conn.lock().unwrap();
         feed_repo::insert_feed(&conn, &feed)?;
 
         for entry in parsed.entries {
+            let categories = if entry.categories.is_empty() {
+                None
+            } else {
+                Some(entry.categories.join(","))
+            };
             let article = Article {
                 id: uuid::Uuid::new_v4().to_string(),
                 feed_id: feed_id.clone(),
@@ -79,6 +88,7 @@ pub async fn add_feed(
                 og_fetched: false,
                 created_at: now.clone(),
                 feed_title: None,
+                categories,
             };
             article_repo::upsert_article(&conn, &article)?;
         }
@@ -132,6 +142,7 @@ pub async fn refresh_feed(
 
         let mut updated_feed = feed.clone();
         updated_feed.title = parsed.title;
+        updated_feed.feed_type = Some(parsed.feed_type);
         updated_feed.site_url = parsed.site_url;
         updated_feed.description = parsed.description;
         updated_feed.icon_url = parsed.icon_url;
@@ -142,6 +153,11 @@ pub async fn refresh_feed(
         feed_repo::update_feed(&conn, &updated_feed)?;
 
         for entry in parsed.entries {
+            let categories = if entry.categories.is_empty() {
+                None
+            } else {
+                Some(entry.categories.join(","))
+            };
             let article = Article {
                 id: uuid::Uuid::new_v4().to_string(),
                 feed_id: feed_id.clone(),
@@ -160,6 +176,7 @@ pub async fn refresh_feed(
                 og_fetched: false,
                 created_at: now.clone(),
                 feed_title: None,
+                categories,
             };
             article_repo::upsert_article(&conn, &article)?;
         }
@@ -203,6 +220,7 @@ pub async fn refresh_all_feeds(
 
             let mut updated_feed = feed.clone();
             updated_feed.title = parsed.title;
+            updated_feed.feed_type = Some(parsed.feed_type);
             updated_feed.site_url = parsed.site_url;
             updated_feed.description = parsed.description;
             updated_feed.icon_url = parsed.icon_url;
@@ -213,6 +231,11 @@ pub async fn refresh_all_feeds(
             feed_repo::update_feed(&conn, &updated_feed)?;
 
             for entry in parsed.entries {
+                let categories = if entry.categories.is_empty() {
+                    None
+                } else {
+                    Some(entry.categories.join(","))
+                };
                 let article = Article {
                     id: uuid::Uuid::new_v4().to_string(),
                     feed_id: feed.id.clone(),
@@ -231,6 +254,7 @@ pub async fn refresh_all_feeds(
                     og_fetched: false,
                     created_at: now.clone(),
                     feed_title: None,
+                    categories,
                 };
                 article_repo::upsert_article(&conn, &article)?;
             }

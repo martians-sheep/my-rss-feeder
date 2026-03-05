@@ -5,6 +5,11 @@
 - 原則として日本語で記述する
 - prefixは英語（feat, fix, refactor, docs, test, chore など）を使用する
 
+## 言語ルール
+
+- PR のタイトル・本文は日本語で記述する
+- コード内のコメントは日本語で記述する
+
 ## 開発コマンド
 
 - `pnpm dev` — フロントエンド開発サーバー起動（port 1420）
@@ -24,7 +29,7 @@
 
 ## プロジェクト構造
 
-```
+```text
 src/                          # フロントエンド
 ├── components/               # Reactコンポーネント（PascalCase.tsx）
 ├── stores/                   # Zustandストア（camelCase.ts）

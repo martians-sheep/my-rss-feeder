@@ -33,6 +33,7 @@ pub struct Article {
     pub og_fetched: bool,
     pub created_at: String,
     pub feed_title: Option<String>,
+    pub categories: Option<String>,
 }
 
 #[cfg(test)]
@@ -58,6 +59,7 @@ mod tests {
             og_fetched: false,
             created_at: "2024-01-01T00:00:00+00:00".to_string(),
             feed_title: None,
+            categories: None,
         }
     }
 
