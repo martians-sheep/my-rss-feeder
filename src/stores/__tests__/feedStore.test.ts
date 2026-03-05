@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mockInvoke, mockFeeds, mockArticles } from "../../test/mocks/tauri";
 import { useFeedStore } from "../feedStore";
 
@@ -9,6 +9,7 @@ describe("feedStore", () => {
       feeds: [],
       articles: [],
       selectedFeedId: null,
+      dateFilter: { preset: "all", customDate: null },
       loading: false,
       error: null,
     });
@@ -69,7 +70,12 @@ describe("feedStore", () => {
 
     await useFeedStore.getState().loadArticles();
 
-    expect(mockInvoke).toHaveBeenCalledWith("list_articles", { feedId: null });
+    expect(mockInvoke).toHaveBeenCalledWith("list_articles", {
+      feedId: null,
+      dateFrom: null,
+      dateTo: null,
+      sortOrder: "publishedDate",
+    });
     expect(useFeedStore.getState().articles).toEqual(mockArticles);
   });
 
@@ -80,7 +86,12 @@ describe("feedStore", () => {
 
     await useFeedStore.getState().loadArticles();
 
-    expect(mockInvoke).toHaveBeenCalledWith("list_articles", { feedId: "feed-1" });
+    expect(mockInvoke).toHaveBeenCalledWith("list_articles", {
+      feedId: "feed-1",
+      dateFrom: null,
+      dateTo: null,
+      sortOrder: "publishedDate",
+    });
     expect(useFeedStore.getState().articles).toEqual(feed1Articles);
   });
 
@@ -98,5 +109,60 @@ describe("feedStore", () => {
     expect(article?.ogImageLocal).toBe("/cache/og.jpg");
     expect(article?.ogDescription).toBe("OGP description");
     expect(article?.ogFetched).toBe(true);
+  });
+
+  it("setDatePresetで日付フィルタが設定されloadArticlesが呼ばれる", async () => {
+    mockInvoke.mockResolvedValueOnce([]);
+
+    useFeedStore.getState().setDatePreset("today");
+
+    expect(useFeedStore.getState().dateFilter.preset).toBe("today");
+    // loadArticles is called with dateFrom set
+    await vi.waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith(
+        "list_articles",
+        expect.objectContaining({
+          feedId: null,
+          dateTo: null,
+        }),
+      );
+    });
+    // dateFrom should be a non-null RFC3339 string with +00:00 suffix
+    const call = mockInvoke.mock.calls[0];
+    expect(call[1].dateFrom).toBeTruthy();
+    expect(call[1].dateFrom).toContain("+00:00");
+  });
+
+  it("setDateFilterでカスタム日付フィルタが設定される", async () => {
+    mockInvoke.mockResolvedValueOnce([]);
+
+    useFeedStore.getState().setDateFilter({
+      preset: "custom",
+      customDate: "2024-01-15",
+    });
+
+    expect(useFeedStore.getState().dateFilter.preset).toBe("custom");
+    await vi.waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith(
+        "list_articles",
+        expect.objectContaining({
+          feedId: null,
+        }),
+      );
+    });
+    const call = mockInvoke.mock.calls[0];
+    // ローカルTZの0時をUTC変換するため、日付部分はTZにより変わりうる
+    expect(call[1].dateFrom).toBeTruthy();
+    expect(call[1].dateFrom).toContain("+00:00");
+    expect(call[1].dateTo).toBeTruthy();
+    expect(call[1].dateTo).toContain("+00:00");
+    // dateFrom < dateTo（24時間差）
+    expect(new Date(call[1].dateFrom).getTime()).toBeLessThan(
+      new Date(call[1].dateTo).getTime(),
+    );
+    expect(
+      new Date(call[1].dateTo).getTime() -
+        new Date(call[1].dateFrom).getTime(),
+    ).toBe(24 * 60 * 60 * 1000);
   });
 });

@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
-import type { Feed, Article } from "../types/feed";
+import type {
+  Feed,
+  Article,
+  DateFilter,
+  DatePreset,
+  ArticleSortOrder,
+} from "../types/feed";
 
 interface OgpData {
   ogImageUrl: string | null;
@@ -8,16 +14,57 @@ interface OgpData {
   ogDescription: string | null;
 }
 
+function localMidnight(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function toRfc3339(date: Date): string {
+  return date.toISOString().replace("Z", "+00:00");
+}
+
+function computeDateRange(filter: DateFilter): {
+  dateFrom: string | null;
+  dateTo: string | null;
+} {
+  if (filter.preset === "all") {
+    return { dateFrom: null, dateTo: null };
+  }
+  if (filter.preset === "custom") {
+    if (!filter.customDate) {
+      return { dateFrom: null, dateTo: null };
+    }
+    // "YYYY-MM-DD" をローカルタイムゾーンの0時として解釈
+    const start = new Date(filter.customDate + "T00:00:00");
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    return { dateFrom: toRfc3339(start), dateTo: toRfc3339(end) };
+  }
+  const now = new Date();
+  const start = localMidnight(now);
+  if (filter.preset === "week") {
+    start.setDate(start.getDate() - 6);
+  } else if (filter.preset === "month") {
+    start.setDate(start.getDate() - 29);
+  }
+  return { dateFrom: toRfc3339(start), dateTo: null };
+}
+
 interface FeedState {
   feeds: Feed[];
   articles: Article[];
   selectedFeedId: string | null;
+  dateFilter: DateFilter;
+  sortOrder: ArticleSortOrder;
   loading: boolean;
   error: string | null;
   loadFeeds: () => Promise<void>;
   addFeed: (url: string) => Promise<void>;
   removeFeed: (feedId: string) => Promise<void>;
   selectFeed: (feedId: string | null) => void;
+  setDatePreset: (preset: DatePreset) => void;
+  setDateFilter: (filter: DateFilter) => void;
+  setSortOrder: (sortOrder: ArticleSortOrder) => void;
   loadArticles: () => Promise<void>;
   markArticleRead: (articleId: string) => Promise<void>;
   refreshFeed: (feedId: string) => Promise<void>;
@@ -29,6 +76,8 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   feeds: [],
   articles: [],
   selectedFeedId: null,
+  dateFilter: { preset: "all", customDate: null },
+  sortOrder: "publishedDate",
   loading: false,
   error: null,
 
@@ -71,12 +120,32 @@ export const useFeedStore = create<FeedState>((set, get) => ({
     set({ selectedFeedId: feedId });
   },
 
+  setDatePreset: (preset: DatePreset) => {
+    const filter: DateFilter = { preset, customDate: null };
+    set({ dateFilter: filter });
+    get().loadArticles();
+  },
+
+  setDateFilter: (filter: DateFilter) => {
+    set({ dateFilter: filter });
+    get().loadArticles();
+  },
+
+  setSortOrder: (sortOrder: ArticleSortOrder) => {
+    set({ sortOrder });
+    get().loadArticles();
+  },
+
   loadArticles: async () => {
     set({ loading: true, error: null });
     try {
-      const { selectedFeedId } = get();
+      const { selectedFeedId, dateFilter, sortOrder } = get();
+      const { dateFrom, dateTo } = computeDateRange(dateFilter);
       const articles = await invoke<Article[]>("list_articles", {
         feedId: selectedFeedId,
+        dateFrom,
+        dateTo,
+        sortOrder,
       });
       set({ articles, loading: false });
     } catch (e) {

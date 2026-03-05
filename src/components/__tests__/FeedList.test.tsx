@@ -29,6 +29,9 @@ describe("FeedList", () => {
     expect(useFeedStore.getState().selectedFeedId).toBe("feed-1");
     expect(mockInvoke).toHaveBeenCalledWith("list_articles", {
       feedId: "feed-1",
+      dateFrom: null,
+      dateTo: null,
+      sortOrder: "publishedDate",
     });
   });
 

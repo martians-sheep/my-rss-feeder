@@ -13,6 +13,15 @@ export interface Feed {
   lastModified: string | null;
 }
 
+export type ArticleSortOrder = "publishedDate" | "receivedDate";
+
+export type DatePreset = "today" | "week" | "month" | "all" | "custom";
+
+export interface DateFilter {
+  preset: DatePreset;
+  customDate: string | null; // "YYYY-MM-DD"
+}
+
 export interface Article {
   id: string;
   feedId: string;

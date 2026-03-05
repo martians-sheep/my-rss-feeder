@@ -56,7 +56,15 @@ impl Database {
                 categories TEXT,
                 FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
                 UNIQUE(feed_id, entry_id)
-            );",
+            );
+
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY NOT NULL,
+                value TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at);
+            CREATE INDEX IF NOT EXISTS idx_articles_created_at ON articles(created_at);",
         )?;
 
         // 既存DBへのマイグレーション: feed_type カラムを追加
@@ -91,6 +99,15 @@ mod tests {
         let count: i64 = conn
             .query_row(
                 "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='articles'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+
+        let count: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='settings'",
                 [],
                 |row| row.get(0),
             )

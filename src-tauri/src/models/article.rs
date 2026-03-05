@@ -1,5 +1,18 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ArticleSortOrder {
+    PublishedDate,
+    ReceivedDate,
+}
+
+impl Default for ArticleSortOrder {
+    fn default() -> Self {
+        Self::PublishedDate
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Article {
@@ -75,6 +88,27 @@ mod tests {
         assert!(json.get("feedTitle").is_some());
         assert!(json.get("feed_id").is_none());
         assert!(json.get("is_read").is_none());
+    }
+
+    #[test]
+    fn sort_order_serializes_to_camel_case() {
+        let json = serde_json::to_value(ArticleSortOrder::PublishedDate).unwrap();
+        assert_eq!(json, "publishedDate");
+        let json = serde_json::to_value(ArticleSortOrder::ReceivedDate).unwrap();
+        assert_eq!(json, "receivedDate");
+    }
+
+    #[test]
+    fn sort_order_deserializes_from_camel_case() {
+        let order: ArticleSortOrder = serde_json::from_str("\"publishedDate\"").unwrap();
+        assert_eq!(order, ArticleSortOrder::PublishedDate);
+        let order: ArticleSortOrder = serde_json::from_str("\"receivedDate\"").unwrap();
+        assert_eq!(order, ArticleSortOrder::ReceivedDate);
+    }
+
+    #[test]
+    fn sort_order_default_is_published_date() {
+        assert_eq!(ArticleSortOrder::default(), ArticleSortOrder::PublishedDate);
     }
 
     #[test]

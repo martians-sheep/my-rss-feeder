@@ -13,9 +13,9 @@
     "windows": [
       {
         "title": "My RSS Feeder",
-        "width": 1200,
+        "width": 1400,
         "height": 800,
-        "minWidth": 800,
+        "minWidth": 960,
         "minHeight": 600
       }
     ],

@@ -1,7 +1,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-shell";
 import type { Article } from "../types/feed";
 import { useFeedStore } from "../stores/feedStore";
+import { useArticleViewStore } from "../stores/articleViewStore";
 
 interface ArticleCardProps {
   article: Article;
@@ -19,14 +19,16 @@ function getImageSrc(article: Article): string | null {
 
 export function ArticleCard({ article }: ArticleCardProps) {
   const markArticleRead = useFeedStore((s) => s.markArticleRead);
+  const selectArticle = useArticleViewStore((s) => s.selectArticle);
+  const selectedArticle = useArticleViewStore((s) => s.selectedArticle);
+
+  const isSelected = selectedArticle?.id === article.id;
 
   const handleClick = async () => {
     if (!article.isRead) {
       markArticleRead(article.id);
     }
-    if (article.url) {
-      await open(article.url);
-    }
+    await selectArticle(article);
   };
 
   const imageSrc = getImageSrc(article);
@@ -35,7 +37,11 @@ export function ArticleCard({ article }: ArticleCardProps) {
   return (
     <article
       onClick={handleClick}
-      className="group relative cursor-pointer rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md"
+      className={`group relative cursor-pointer rounded-lg border bg-white transition-shadow hover:shadow-md ${
+        isSelected
+          ? "border-blue-500 ring-1 ring-blue-500"
+          : "border-gray-200"
+      }`}
     >
       <div className="flex">
         <div className="min-w-0 flex-1 p-4">

@@ -87,7 +87,7 @@ pub async fn discover_or_use_feed_url(
     }
 
     // feed-rsでパースを試みる
-    if feed_rs::parser::parse(&body).is_ok() {
+    if feed_rs::parser::parse(body.as_slice()).is_ok() {
         return Ok(url.to_string());
     }
 
